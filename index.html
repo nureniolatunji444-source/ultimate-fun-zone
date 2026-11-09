@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Ultimate Fun Zone</title><style>
+:root{--bg:#101426;--panel:#1b2340;--gold:#ffd166;--ink:#f6f7fb;--muted:#b8bfd6}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at top,#27345e,var(--bg) 60%);color:var(--ink);font:16px system-ui,sans-serif;min-height:100vh}
+main{max-width:650px;margin:auto;padding:22px 16px 40px}.brand{text-align:center;padding:22px 8px}.brand .star{font-size:42px}.brand h1{margin:6px 0;color:var(--gold);font-size:30px}.brand p{color:var(--muted);margin:0}
+.card{background:var(--panel);border:1px solid #354064;border-radius:18px;padding:18px;margin:14px 0;box-shadow:0 10px 30px #0004}
+button,input,select{font:inherit;border-radius:12px;border:0;padding:13px;width:100%;margin:6px 0}
+button{background:var(--gold);color:#171b2e;font-weight:800;cursor:pointer}button.secondary{background:#354064;color:white}button:disabled{opacity:.45}
+label{display:block;color:var(--muted);font-size:14px;margin-top:8px}.row{display:flex;gap:10px}.row>*{flex:1;min-width:0}
+.hidden{display:none}.score{display:flex;justify-content:space-between;color:var(--gold);font-weight:700}.question{font-size:28px;text-align:center;font-weight:800;padding:25px 4px}.answers{display:grid;grid-template-columns:1fr 1fr;gap:10px}.answers button{min-height:58px}.small{color:var(--muted);font-size:13px;text-align:center}
+#feedback{min-height:26px;text-align:center;font-weight:700} .pill{display:inline-block;background:#354064;border-radius:99px;padding:5px 10px;color:var(--gold);font-size:12px}
+</style></head><body><main>
+<header class="brand"><div class="star">🎮</div><h1>ULTIMATE FUN ZONE</h1><p>Think fast. Play smart. Have fun!</p></header>
+<section id="home" class="card">
+<h2>Choose your game</h2>
+<label>Player names (separate with commas)</label><input id="names" value="Player 1, Player 2" maxlength="80">
+<div class="row"><div><label>Difficulty</label><select id="level"><option value="easy">Easy</option><option value="medium" selected>Medium</option><option value="hard">Hard</option></select></div>
+<div><label>Time per question</label><select id="seconds"><option>10</option><option selected>20</option><option>30</option><option>45</option></select></div></div>
+<label>Game mode</label><select id="mode"><option value="local">Offline pass-and-play (2–4 players)</option><option value="solo">Solo practice</option><option value="online">Online multiplayer (server setup required)</option></select>
+<button onclick="startGame()">START GAME</button><button class="secondary" onclick="showRules()">HOW TO PLAY</button>
+<p class="small">Offline play works without internet. Online rooms require a multiplayer server to be configured.</p>
+</section>
+<section id="game" class="card hidden">
+<div class="score"><span id="turn"></span><span id="timer"></span></div><div class="small" id="progress"></div>
+<div class="question" id="question"></div><div class="answers" id="answers"></div><div id="feedback"></div>
+<button class="secondary" onclick="nextQuestion()">SKIP QUESTION</button>
+</section>
+<section id="result" class="card hidden"><h2>🏆 Game results</h2><div id="scores"></div><button onclick="backHome()">PLAY AGAIN</button></section>
+<section id="rules" class="card hidden"><h2>How to play</h2><p>Each player takes a turn answering timed multiple-choice questions. Correct answers earn 10 points. Hard questions use larger numbers, more steps and tighter rounding. The game includes arithmetic, time rounding, place value and number sense.</p><button onclick="backHome()">BACK</button></section>
+</main>
+<script>
+let players=[],turn=0,qNo=0,total=15,remaining=20,tick=null,current=null,level='medium',seconds=20,mode='local';
+const $=id=>document.getElementById(id);
+function show(id){['home','game','result','rules'].forEach(x=>$(x).classList.toggle('hidden',x!==id))}
+function showRules(){show('rules')}
+function backHome(){clearInterval(tick);show('home')}
+function startGame(){
+ mode=$('mode').value;
+ if(mode==='online'){alert('Online multiplayer needs a hosted room server. Offline and solo modes are ready now.');return}
+ players=$('names').value.split(',').map(x=>x.trim()).filter(Boolean).slice(0,4);
+ if(mode==='solo')players=[players[0]||'Player 1'];
+ if(!players.length)players=['Player 1'];
+ if(players.length===1&&mode==='local')players.push('Player 2');
+ players=players.map(name=>({name,score:0}));
+ level=$('level').value;seconds=Number($('seconds').value);turn=0;qNo=0;show('game');makeQuestion();
+}
+function rand(a,b){return Math.floor(Math.random()*(b-a+1))+a}
+function roundTo(n,unit){return Math.round(n/unit)*unit}
+function makeQuestion(){
+ clearInterval(tick);remaining=seconds;
+ const hard=level==='hard',easy=level==='easy';
+ const types=easy?['add','sub','round','place','time']:hard?['mul','div','round','time','multi','place']:['add','sub','mul','round','time','multi'];
+ let type=types[rand(0,types.length-1)],a,b,answer,prompt;
+ if(type==='add'){a=rand(10,99);b=rand(10,99);answer=a+b;prompt=`${a} + ${b} = ?`}
+ if(type==='sub'){a=rand(30,150);b=rand(5,a);answer=a-b;prompt=`${a} − ${b} = ?`}
+ if(type==='mul'){a=rand(hard?12:2,hard?35:12);b=rand(2,hard?19:12);answer=a*b;prompt=`${a} × ${b} = ?`}
+ if(type==='div'){b=rand(2,15);answer=rand(3,30);a=b*answer;prompt=`${a} ÷ ${b} = ?`}
+ if(type==='round'){let unit=[10,100,1000][rand(0,hard?2:1)];a=rand(1,99999);answer=roundTo(a,unit);prompt=`Round ${a.toLocaleString()} to the nearest ${unit.toLocaleString()}`}
+ if(type==='place'){a=rand(1000,999999);let p=[10,100,1000][rand(0,2)];answer=Math.floor(a/p)%10;prompt=`What digit is in the ${p===10?'tens':p===100?'hundreds':'thousands'} place of ${a.toLocaleString()}?`}
+ if(type==='time'){let h=rand(1,11),m=rand(1,59),unit=hard?15:30;let mins=Math.round(m/unit)*unit;if(mins===60){h=h%12+1;mins=0}answer=`${String(h).padStart(2,'0')}:${String(mins).padStart(2,'0')}`;prompt=`Round ${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')} to the nearest ${unit} minutes`}
+ if(type==='multi'){a=rand(2,20);b=rand(2,15);let c=rand(2,10);answer=a+b*c;prompt=`${a} + (${b} × ${c}) = ?`}
+ const correct=answer;let opts=[correct];
+ while(opts.length<4){let v=typeof correct==='number'?correct+rand(-Math.max(8,Math.abs(correct)*.25),Math.max(8,Math.abs(correct)*.25)):String(rand(1,12)).padStart(2,'0')+':'+['00','15','30','45'][rand(0,3)];if(!opts.includes(v))opts.push(v)}
+ opts.sort(()=>Math.random()-.5);current={answer:correct};$('question').textContent=prompt;$('answers').innerHTML='';
+ opts.forEach(v=>{let btn=document.createElement('button');btn.textContent=typeof v==='number'?v.toLocaleString():v;btn.onclick=()=>answerQuestion(v);$('answers').appendChild(btn)});
+ $('turn').textContent=players[turn].name+' — '+players[turn].score+' pts';$('progress').textContent=`Question ${qNo+1} of ${total} • ${level.toUpperCase()}`;$('feedback').textContent='';$('timer').textContent=remaining+'s';
+ tick=setInterval(()=>{remaining--;$('timer').textContent=remaining+'s';if(remaining<=0){clearInterval(tick);answerQuestion(null)}},1000);
+}
+function answerQuestion(v){if(!tick)return;clearInterval(tick);tick=null;let ok=v===current.answer;if(ok){players[turn].score+=10;$('feedback').textContent='Correct! +10 points 🎉'}else{$('feedback').textContent='Not quite. Correct answer: '+(typeof current.answer==='number'?current.answer.toLocaleString():current.answer)}
+ [...$('answers').children].forEach(b=>b.disabled=true);setTimeout(nextQuestion,1100)}
+function nextQuestion(){clearInterval(tick);qNo++;turn=(turn+1)%players.length;if(qNo>=total){$('scores').innerHTML=players.slice().sort((a,b)=>b.score-a.score).map((p,i)=>`<p>${i+1}. ${p.name}: <b>${p.score} points</b></p>`).join('');show('result')}else makeQuestion()}
+</script></body></html>
